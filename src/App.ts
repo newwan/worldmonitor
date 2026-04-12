@@ -27,6 +27,7 @@ import { SignalModal, IntelligenceGapBadge, BreakingNewsBanner } from '@/compone
 import { initBreakingNewsAlerts, destroyBreakingNewsAlerts } from '@/services/breaking-news-alerts';
 import type { ServiceStatusPanel } from '@/components/ServiceStatusPanel';
 import type { StablecoinPanel } from '@/components/StablecoinPanel';
+import type { EnergyCrisisPanel } from '@/components/EnergyCrisisPanel';
 import type { ETFFlowsPanel } from '@/components/ETFFlowsPanel';
 import type { MacroSignalsPanel } from '@/components/MacroSignalsPanel';
 import type { FearGreedPanel } from '@/components/FearGreedPanel';
@@ -38,6 +39,7 @@ import type { GroceryBasketPanel } from '@/components/GroceryBasketPanel';
 import type { BigMacPanel } from '@/components/BigMacPanel';
 import type { FuelPricesPanel } from '@/components/FuelPricesPanel';
 import type { FaoFoodPriceIndexPanel } from '@/components/FaoFoodPriceIndexPanel';
+import type { OilInventoriesPanel } from '@/components/OilInventoriesPanel';
 import type { ClimateNewsPanel } from '@/components/ClimateNewsPanel';
 import type { ConsumerPricesPanel } from '@/components/ConsumerPricesPanel';
 import type { DefensePatentsPanel } from '@/components/DefensePatentsPanel';
@@ -47,6 +49,7 @@ import type { YieldCurvePanel } from '@/components/YieldCurvePanel';
 import type { EarningsCalendarPanel } from '@/components/EarningsCalendarPanel';
 import type { EconomicCalendarPanel } from '@/components/EconomicCalendarPanel';
 import type { CotPositioningPanel } from '@/components/CotPositioningPanel';
+import type { GoldIntelligencePanel } from '@/components/GoldIntelligencePanel';
 import { isDesktopRuntime, waitForSidecarReady } from '@/services/runtime';
 import { hasPremiumAccess } from '@/services/panel-gating';
 import { BETA_MODE } from '@/config/beta';
@@ -270,6 +273,10 @@ export class App {
       const panel = this.state.panels.stablecoins as StablecoinPanel | undefined;
       if (panel) primeTask('stablecoins', () => panel.fetchData());
     }
+    if (shouldPrime('energy-crisis')) {
+      const panel = this.state.panels['energy-crisis'] as EnergyCrisisPanel | undefined;
+      if (panel) primeTask('energy-crisis', () => panel.fetchData());
+    }
     if (shouldPrime('telegram-intel')) {
       primeTask('telegram-intel', () => this.dataLoader.loadTelegramIntel());
     }
@@ -292,6 +299,10 @@ export class App {
     if (shouldPrime('fao-food-price-index')) {
       const panel = this.state.panels['fao-food-price-index'] as FaoFoodPriceIndexPanel | undefined;
       if (panel) primeTask('fao-food-price-index', () => panel.fetchData());
+    }
+    if (shouldPrime('oil-inventories')) {
+      const panel = this.state.panels['oil-inventories'] as OilInventoriesPanel | undefined;
+      if (panel) primeTask('oil-inventories', () => panel.fetchData());
     }
     if (shouldPrime('climate-news')) {
       const panel = this.state.panels['climate-news'] as ClimateNewsPanel | undefined;
@@ -328,6 +339,10 @@ export class App {
     if (shouldPrime('cot-positioning')) {
       const panel = this.state.panels['cot-positioning'] as CotPositioningPanel | undefined;
       if (panel) primeTask('cot-positioning', () => panel.fetchData());
+    }
+    if (shouldPrime('gold-intelligence')) {
+      const panel = this.state.panels['gold-intelligence'] as GoldIntelligencePanel | undefined;
+      if (panel) primeTask('gold-intelligence', () => panel.fetchData());
     }
     if (shouldPrime('aaii-sentiment')) {
       primeTask('aaiiSentiment', () => this.dataLoader.loadAaiiSentiment());
@@ -1247,6 +1262,12 @@ export class App {
       () => this.isPanelNearViewport('stablecoins')
     );
     this.refreshScheduler.scheduleRefresh(
+      'energy-crisis',
+      () => (this.state.panels['energy-crisis'] as EnergyCrisisPanel).fetchData(),
+      REFRESH_INTERVALS.energyCrisis,
+      () => this.isPanelNearViewport('energy-crisis')
+    );
+    this.refreshScheduler.scheduleRefresh(
       'etf-flows',
       () => (this.state.panels['etf-flows'] as ETFFlowsPanel).fetchData(),
       REFRESH_INTERVALS.etfFlows,
@@ -1358,6 +1379,13 @@ export class App {
     );
 
     this.refreshScheduler.scheduleRefresh(
+      'oil-inventories',
+      () => (this.state.panels['oil-inventories'] as OilInventoriesPanel).fetchData(),
+      REFRESH_INTERVALS.oilInventories,
+      () => this.isPanelNearViewport('oil-inventories')
+    );
+
+    this.refreshScheduler.scheduleRefresh(
       'climate-news',
       () => (this.state.panels['climate-news'] as ClimateNewsPanel).fetchData(),
       REFRESH_INTERVALS.climateNews,
@@ -1399,6 +1427,12 @@ export class App {
       () => (this.state.panels['cot-positioning'] as CotPositioningPanel).fetchData(),
       REFRESH_INTERVALS.cotPositioning,
       () => this.isPanelNearViewport('cot-positioning')
+    );
+    this.refreshScheduler.scheduleRefresh(
+      'gold-intelligence',
+      () => (this.state.panels['gold-intelligence'] as GoldIntelligencePanel).fetchData(),
+      REFRESH_INTERVALS.goldIntelligence,
+      () => this.isPanelNearViewport('gold-intelligence')
     );
     this.refreshScheduler.scheduleRefresh(
       'aaii-sentiment',

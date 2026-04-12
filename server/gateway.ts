@@ -200,6 +200,7 @@ const RPC_CACHE_TIER: Record<string, CacheTier> = {
 
   '/api/market/v1/list-earnings-calendar': 'slow',
   '/api/market/v1/get-cot-positioning': 'slow',
+  '/api/market/v1/get-gold-intelligence': 'slow',
   '/api/market/v1/get-insider-transactions': 'slow',
   '/api/economic/v1/get-economic-calendar': 'slow',
   '/api/intelligence/v1/list-market-implications': 'slow',
@@ -207,6 +208,8 @@ const RPC_CACHE_TIER: Record<string, CacheTier> = {
   '/api/economic/v1/get-eurostat-country-data': 'slow',
   '/api/economic/v1/get-eu-gas-storage': 'slow',
   '/api/economic/v1/get-oil-stocks-analysis': 'static',
+  '/api/economic/v1/get-oil-inventories': 'slow',
+  '/api/economic/v1/get-energy-crisis-policies': 'static',
   '/api/economic/v1/get-eu-fsi': 'slow',
   '/api/economic/v1/get-economic-stress': 'slow',
   '/api/supply-chain/v1/get-shipping-stress': 'medium',

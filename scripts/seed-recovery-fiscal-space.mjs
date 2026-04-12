@@ -46,11 +46,13 @@ function latestValue(byYear) {
 }
 
 async function fetchFiscalSpace() {
-  const [revenueData, balanceData, debtData] = await Promise.all([
-    fetchImfIndicator('GGR_G01_GDP_PT'),
-    fetchImfIndicator('GGXCNL_G01_GDP_PT'),
-    fetchImfIndicator('GGXWDG_NGDP_PT'),
-  ]);
+  // Sequential with delays to avoid IMF rate limiter. seed-imf-macro.mjs
+  // may run in the same cron window, so concurrent Promise.all risks 403.
+  const revenueData = await fetchImfIndicator('GGR_G01_GDP_PT');
+  await sleep(1000);
+  const balanceData = await fetchImfIndicator('GGXCNL_G01_GDP_PT');
+  await sleep(1000);
+  const debtData = await fetchImfIndicator('GGXWDG_NGDP_PT');
 
   const countries = {};
   const allIso3 = new Set([

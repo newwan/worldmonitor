@@ -23,6 +23,7 @@ import {
   EconomicPanel,
   ConsumerPricesPanel,
   EnergyComplexPanel,
+  OilInventoriesPanel,
   GdeltIntelPanel,
   LiveNewsPanel,
   getDefaultLiveChannels,
@@ -69,10 +70,12 @@ import {
   EarningsCalendarPanel,
   EconomicCalendarPanel,
   CotPositioningPanel,
+  GoldIntelligencePanel,
   DiseaseOutbreaksPanel,
   SocialVelocityPanel,
   WsbTickerScannerPanel,
   AAIISentimentPanel,
+  EnergyCrisisPanel,
 } from '@/components';
 import { SatelliteFiresPanel } from '@/components/SatelliteFiresPanel';
 import { focusInvestmentOnMap } from '@/services/investments-focus';
@@ -751,6 +754,8 @@ export class PanelLayoutManager implements AppModule {
 
     this.createPanel('commodities', () => new CommoditiesPanel());
     this.createPanel('energy-complex', () => new EnergyComplexPanel());
+    this.createPanel('oil-inventories', () => new OilInventoriesPanel());
+    this.createPanel('energy-crisis', () => new EnergyCrisisPanel());
     this.createPanel('polymarket', () => new PredictionPanel());
 
     this.createNewsPanel('gov', 'panels.gov');
@@ -1106,6 +1111,7 @@ export class PanelLayoutManager implements AppModule {
     this.createPanel('earnings-calendar', () => new EarningsCalendarPanel());
     this.createPanel('economic-calendar', () => new EconomicCalendarPanel());
     this.createPanel('cot-positioning', () => new CotPositioningPanel());
+    this.createPanel('gold-intelligence', () => new GoldIntelligencePanel());
     this.createPanel('hormuz-tracker', () => new HormuzPanel());
     this.createPanel('etf-flows', () => new ETFFlowsPanel());
     this.createPanel('stablecoins', () => new StablecoinPanel());
