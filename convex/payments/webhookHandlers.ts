@@ -113,32 +113,103 @@ export const webhookHandler = httpAction(async (ctx, request) => {
   // 5. Dispatch to internal mutation for idempotent processing.
   //    Uses the validated payload directly (not a second JSON.parse) to avoid divergence.
   //    On handler failure the mutation throws, rolling back partial writes.
-  //    We catch and return 500 so Dodo retries.
+  //    We record a sanitized failure projection in a separate mutation before
+  //    returning 500 so Dodo retries without losing the repair context.
+  const eventTimestamp = payload.timestamp
+    ? payload.timestamp.getTime()
+    : Date.now();
+
+  if (!payload.timestamp) {
+    console.warn("[webhook] Missing payload.timestamp — falling back to Date.now(). Out-of-order detection may be unreliable.");
+  }
+
+  // Round-trip through JSON to convert Date objects to ISO strings.
+  // Convex does not support Date as a value type, and the Dodo SDK
+  // parses date fields (created_at, expires_at, etc.) into Date objects.
+  const sanitizedPayload = JSON.parse(JSON.stringify(payload));
+  const eventType = typeof payload.type === "string" ? payload.type : "unknown";
+
   try {
-    const eventTimestamp = payload.timestamp
-      ? payload.timestamp.getTime()
-      : Date.now();
-
-    if (!payload.timestamp) {
-      console.warn("[webhook] Missing payload.timestamp — falling back to Date.now(). Out-of-order detection may be unreliable.");
-    }
-
-    // Round-trip through JSON to convert Date objects to ISO strings.
-    // Convex does not support Date as a value type, and the Dodo SDK
-    // parses date fields (created_at, expires_at, etc.) into Date objects.
-    const sanitizedPayload = JSON.parse(JSON.stringify(payload));
-
     await ctx.runMutation(
       internal.payments.webhookMutations.processWebhookEvent,
       {
         webhookId,
-        eventType: payload.type,
+        eventType,
         rawPayload: sanitizedPayload,
         timestamp: eventTimestamp,
       },
     );
   } catch (error) {
+    const errorKind = error instanceof Error && error.name
+      ? error.name
+      : "WebhookProcessingError";
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    try {
+      const signal = await ctx.runMutation(
+        internal.payments.webhookMutations.recordWebhookFailure,
+        {
+          webhookId,
+          eventType,
+          rawPayload: sanitizedPayload,
+          timestamp: eventTimestamp,
+          receivedAt: Date.now(),
+          errorKind,
+          errorMessage,
+        },
+      );
+
+      // `convex-test` cannot safely await a scheduler write started by an HTTP
+      // action, so keep this test-only guard aligned with the existing Redis
+      // scheduler guards in subscriptionHelpers.ts. Production attempts to
+      // queue the structured auto-Sentry signal after the failure row commits;
+      // a scheduler failure is logged and does not alter the provider-facing
+      // retry response.
+      if (process.env.NODE_ENV !== "test") {
+        // sentry-coverage-ok: the scheduled mutation emits a structured
+        // console.error after the failure row commits, so Convex auto-Sentry
+        // receives an ops signal without changing the provider-facing 500.
+        try {
+          await ctx.scheduler.runAfter(
+            0,
+            internal.payments.webhookMutations.reportDodoWebhookFailure,
+            {
+              webhookId,
+              eventType,
+              errorKind: signal.errorKind,
+              errorMessage: signal.errorMessage,
+              attemptCount: signal.attemptCount,
+              unresolvedCount: signal.unresolvedCount,
+              eventTypes: signal.eventTypes,
+            },
+          );
+        } catch (scheduleErr) {
+          console.error("[webhook] reportDodoWebhookFailure schedule failed:", scheduleErr);
+        }
+      }
+    } catch (recordErr) {
+      // The retry contract is still more important than the observability
+      // bonus. Keep returning 500 if the separate failure write is degraded.
+      console.error("[webhook] Failed to persist Dodo webhook failure:", recordErr);
+    }
+
+    // sentry-coverage-ok: failure details are persisted above and the
+    // scheduled report mutation provides the structured Sentry signal.
     console.error("Webhook processing failed:", error);
+    return new Response("Internal processing error", { status: 500 });
+  }
+
+  // Recovery is deliberately outside the processing-failure catch. If this
+  // bookkeeping mutation is transiently unavailable, the provider should
+  // retry the delivery, but that recovery error must not be recorded as a
+  // new processing incident after billing state already committed.
+  try {
+    await ctx.runMutation(
+      internal.payments.webhookMutations.markWebhookFailureRecovered,
+      { webhookId },
+    );
+  } catch (error) {
+    console.error("[webhook] Failed to mark Dodo webhook failure recovered:", error);
     return new Response("Internal processing error", { status: 500 });
   }
 
